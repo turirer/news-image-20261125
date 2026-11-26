@@ -1,11 +1,28 @@
-// A working news-image-daily entry (Node 22, standard library only): its image is the entry.png beside this file, and
-// the program copies it to /output/entry.png. A starting point, not a winner: replace the image. The gate takes a
-// whole PNG or JPEG of at most 1 MiB and 1024 by 1024 pixels, and the judge sees exactly the bytes copied.
+// Entry point for the news-image-20261125 bounty (Node, standard library only).
 //
-// Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
-//   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+// The picture for this entry is the entry.png committed beside this file.
+// At grading time the harness expects the program to leave that picture at
+// $MAKEFUN_OUTPUT_DIR/entry.png (falling back to /output when the variable
+// is unset). Before copying, the file is sanity-checked: it must exist and
+// start with the eight-byte PNG signature, otherwise we fail loudly instead
+// of handing the judge a broken file. The copied size is printed so the run
+// log shows exactly what was delivered.
 
-import { copyFileSync } from 'node:fs';
+import { copyFileSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-copyFileSync(new URL('./entry.png', import.meta.url), join(process.env.MAKEFUN_OUTPUT_DIR ?? '/output', 'entry.png'));
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+const source = new URL('./entry.png', import.meta.url);
+const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const target = join(outDir, 'entry.png');
+
+const head = readFileSync(source).subarray(0, PNG_SIGNATURE.length);
+if (!head.equals(PNG_SIGNATURE)) {
+  throw new Error('entry.png does not start with the PNG signature');
+}
+
+copyFileSync(source, target);
+
+const { size } = statSync(target);
+console.log(`entry.png copied to ${target} (${size} bytes)`);
